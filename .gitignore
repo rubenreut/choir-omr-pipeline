@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.DS_Store
+dataset/
+checkpoints/
+musicxml/
+musicxml_closed/
+musicxml_synth/
+images/
+images_synth/
+augmented/
+*.musicxml
+*.png
+*.webp
