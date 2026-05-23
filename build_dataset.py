@@ -37,6 +37,8 @@ def main():
     ap.add_argument("--out", type=Path, default=Path("./dataset"), help="Output root")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--musescore", default="mscore", help="MuseScore CLI binary")
+    ap.add_argument("--include-bach", type=int, default=1,
+                    help="Also extract Bach chorales from music21 corpus (1=yes, 0=no)")
     args = ap.parse_args()
 
     random.seed(args.seed)
@@ -48,14 +50,42 @@ def main():
     images_dir.mkdir(parents=True, exist_ok=True)
     augmented_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- 1. Generate MusicXML ---
-    print(f"[build] generating {args.count} MusicXMLs...", flush=True)
+    # --- 1. Generate synthetic MusicXML ---
+    print(f"[build] generating {args.count} synthetic MusicXMLs...", flush=True)
     for i in range(args.count):
         score = synthesize.synthesize_one(seed=args.seed + i)
         path = musicxml_dir / f"piece_{i:06d}.musicxml"
         score.write("musicxml", fp=str(path))
-        if (i + 1) % 100 == 0:
+        if (i + 1) % 500 == 0:
             print(f"[build] generated {i + 1}/{args.count}", flush=True)
+
+    # --- 1b. Extract Bach chorales from music21 (real SATB data) ---
+    if args.include_bach:
+        print(f"[build] extracting Bach chorales from music21 corpus...", flush=True)
+        try:
+            from music21 import corpus
+            bach_files = corpus.getComposer("bach")
+            bach_count = 0
+            for path in bach_files:
+                try:
+                    score = corpus.parse(path)
+                    parts = score.parts
+                    if len(parts) != 4:
+                        continue
+                    names = [(p.partName or "").lower() for p in parts]
+                    if not all(any(exp in n for n in names) for exp in ("soprano", "alto", "tenor", "bass")):
+                        continue
+                    piece_id = Path(str(path)).stem.replace(" ", "_")
+                    out_path = musicxml_dir / f"bach_{piece_id}.musicxml"
+                    score.write("musicxml", fp=str(out_path))
+                    bach_count += 1
+                    if bach_count % 50 == 0:
+                        print(f"[build] extracted {bach_count} Bach chorales", flush=True)
+                except Exception:
+                    pass
+            print(f"[build] total Bach chorales: {bach_count}", flush=True)
+        except Exception as e:
+            print(f"[build] Bach extraction failed: {e}", flush=True)
 
     # --- 2. Render to PNG via MuseScore ---
     print(f"[build] rendering to PNG via MuseScore...", flush=True)

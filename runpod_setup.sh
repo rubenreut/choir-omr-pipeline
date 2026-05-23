@@ -51,10 +51,10 @@ ensure_repo() {
 generate() {
   ensure_repo
   cd "$WORKSPACE/code"
-  COUNT="${COUNT:-2000}"
-  AUGMENTS="${AUGMENTS:-5}"
-  echo "[generate] building dataset: $COUNT pieces × $AUGMENTS augments..." | tee -a "$LOG_DIR/generate.log"
-  # MuseScore3 needs a display server even in CLI mode
+  COUNT="${COUNT:-15000}"
+  AUGMENTS="${AUGMENTS:-6}"
+  INCLUDE_BACH="${INCLUDE_BACH:-1}"
+  echo "[generate] building dataset: $COUNT synth pieces × $AUGMENTS augments + Bach=$INCLUDE_BACH..." | tee -a "$LOG_DIR/generate.log"
   Xvfb :99 -screen 0 1024x768x24 &
   XVFB_PID=$!
   export DISPLAY=:99
@@ -63,6 +63,7 @@ generate() {
     --augments "$AUGMENTS" \
     --out "$DATASET_DIR" \
     --musescore /usr/bin/mscore3 \
+    --include-bach "$INCLUDE_BACH" \
     2>&1 | tee -a "$LOG_DIR/generate.log"
   kill $XVFB_PID 2>/dev/null || true
   echo "[generate] done. Dataset:" | tee -a "$LOG_DIR/generate.log"
@@ -73,7 +74,7 @@ train() {
   ensure_repo
   cd "$WORKSPACE/code"
   BATCH="${BATCH:-8}"
-  EPOCHS="${EPOCHS:-15}"
+  EPOCHS="${EPOCHS:-50}"
   echo "[train] starting training (batch=$BATCH, epochs=$EPOCHS)..." | tee -a "$LOG_DIR/train.log"
   python3 train.py \
     --manifest "$DATASET_DIR/manifest.json" \
